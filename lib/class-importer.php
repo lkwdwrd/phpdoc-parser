@@ -339,6 +339,8 @@ class Importer implements LoggerAwareInterface {
 		if ( 'wp-includes/version.php' === $file['path'] ) {
 			$this->import_version( $file );
 		}
+
+		$this->_free_up_memory();
 	}
 
 	/**
@@ -810,5 +812,33 @@ class Importer implements LoggerAwareInterface {
 				$this->anything_updated[] = true;
 			}
 		}
+	}
+
+	/**
+	 * Frees up memory by clearing some internal keys that baloon.
+	 *
+	 * The WPDB object and Object_Cache objects store some data every time they
+	 * are used. Since we are doing a very long running script, these are a bit
+	 * self defeating because processing time is less of an issue than memory
+	 * usage, which grows very large as the script runs.
+	 *
+	 * Initial testing on core, this function took memory usage from roughly
+	 * 880MB to around 420MB on a clean parse, 380MB on an update. A very
+	 * considerable difference. This was with the SAVEQUERIES constant on.
+	 * Turning that off alone saved a ton of memory, but this ensures even with
+	 * the constant set to true we don't get too memory crazy when processing
+	 * an import.
+	 */
+	protected function _free_up_memory() {
+		// Clear the WPDB query cache since it balloons out of control
+		// especially on larger imports.
+		global $wpdb, $wp_object_cache;
+		$wpdb->queries = array();
+
+		// Reinit the object cache to clean internal object cache keys.
+		// These get huge with so many cache calls running in a single process.
+		wp_cache_close();
+		$wp_object_cache = null;
+		wp_cache_init();
 	}
 }
