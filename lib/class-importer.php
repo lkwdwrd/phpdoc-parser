@@ -210,6 +210,7 @@ class Importer implements LoggerAwareInterface {
 		$time = $time_end - $time_start;
 
 		$this->logger->info( 'Time: '.$time );
+		$this->logger->info( 'Memory: ' . round( memory_get_peak_usage() / ( 1024 * 1024 ), 2 ) . 'MB' );
 		$this->logger->info( 'Queries: ' . ( $wpdb->num_queries - $num_queries ) );
 		if ( empty( $this->errors ) ) {
 			$this->logger->notice( 'Import complete!' );
